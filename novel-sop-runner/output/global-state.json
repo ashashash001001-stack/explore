@@ -1,0 +1,12 @@
+{
+  "novel": {
+    "title": "test-novel",
+    "outline": "A thriller about a detective solving mysteries in a small town",
+    "genre": "suspense",
+    "chapters": 3
+  },
+  "current_chapter": 0,
+  "chapters": [],
+  "hooks": [],
+  "foreshadows": []
+}

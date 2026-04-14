@@ -1,0 +1,7 @@
+api_key: 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
+base_url: https://openrouter.ai/api/v1
+models:
+  checking: nvidia/nemotron-3-super-120b-a12b:free
+  planning: nvidia/nemotron-3-super-120b-a12b:free
+  writing: nvidia/nemotron-3-super-120b-a12b:free
+output_dir: output/
