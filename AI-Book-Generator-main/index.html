@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>AI Book Generator</title>
+        <meta name="description" content="Generate complete books using AI with customizable parameters">
+        <meta name="author" content="AI Book Generator">
+        
+        <!-- Bootstrap 5 for better performance and features -->
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+        <!-- Font Awesome for icons -->
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        <!-- Custom styles -->
+        <link rel="stylesheet" href="styles.css">
+        
+        <!-- Preload critical resources -->
+        <link rel="preconnect" href="https://api.openai.com">
+    </head>
+    <body>
+        <!-- Theme Toggle -->
+        <button class="theme-toggle" id="theme-toggle" title="Toggle dark mode">
+            <i class="fas fa-moon" id="theme-icon"></i>
+        </button>
+
+        <!-- Auto-save Indicator -->
+        <div class="auto-save-indicator" id="auto-save-indicator">
+            <i class="fas fa-check-circle me-2"></i>Auto-saved
+        </div>
+
+        <!-- Main container -->
+        <div class="container-fluid">
+            <div class="row justify-content-center">
+                <div class="col-lg-10 col-xl-8">
+                    <!-- Header -->
+                    <header class="text-center py-4">
+                        <h1 class="display-4 fw-bold text-primary">
+                            <i class="fas fa-book-open me-3"></i>
+                            AI Book Generator
+                        </h1>
+                        <p class="lead text-muted">Create complete books using artificial intelligence</p>
+                        
+                        <!-- Statistics Dashboard -->
+                        <div class="stats-dashboard mt-4" id="stats-dashboard">
+                            <div class="stat-card">
+                                <div class="stat-value" id="stat-words">0</div>
+                                <div class="stat-label">Total Words</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value" id="stat-chapters">0</div>
+                                <div class="stat-label">Chapters</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value" id="stat-reading">0 min</div>
+                                <div class="stat-label">Reading Time</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value" id="stat-progress">0%</div>
+                                <div class="stat-label">Completion</div>
+                            </div>
+                        </div>
+                    </header>
+
+                    <!-- Alert container for notifications -->
+                    <div id="alert-container"></div>
+
+                    <!-- API Key Setup Modal -->
+                    <div class="modal fade" id="apiKeyModal" tabindex="-1" aria-labelledby="apiKeyModalLabel" aria-hidden="true">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="apiKeyModalLabel">
+                                        <i class="fas fa-key me-2"></i>API Key Configuration
+                                    </h5>
+                                </div>
+                                <div class="modal-body">
+                                    <p class="text-muted small mb-3">Enter keys for the providers you want to use. At least one key is required. Keys are stored locally in your browser and only sent directly to the respective provider.</p>
+
+                                    <!-- OpenAI -->
+                                    <div class="mb-4">
+                                        <div class="d-flex align-items-center mb-2">
+                                            <span class="badge bg-success me-2">OpenAI</span>
+                                            <label for="api-key-input" class="form-label mb-0 fw-semibold">OpenAI API Key</label>
+                                        </div>
+                                        <input type="password" class="form-control" id="api-key-input"
+                                               placeholder="sk-..." aria-describedby="api-key-help">
+                                        <div id="api-key-help" class="form-text">
+                                            Required for GPT models and cover image generation.
+                                            <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">Get key <i class="fas fa-external-link-alt fa-xs"></i></a>
+                                        </div>
+                                    </div>
+
+                                    <!-- Anthropic -->
+                                    <div class="mb-4">
+                                        <div class="d-flex align-items-center mb-2">
+                                            <span class="badge bg-warning text-dark me-2">Anthropic</span>
+                                            <label for="api-key-anthropic-input" class="form-label mb-0 fw-semibold">Anthropic API Key</label>
+                                        </div>
+                                        <input type="password" class="form-control" id="api-key-anthropic-input"
+                                               placeholder="sk-ant-..." aria-describedby="anthropic-key-help">
+                                        <div id="anthropic-key-help" class="form-text">
+                                            Required for Claude models.
+                                            <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">Get key <i class="fas fa-external-link-alt fa-xs"></i></a>
+                                        </div>
+                                    </div>
+
+                                    <!-- Google -->
+                                    <div class="mb-2">
+                                        <div class="d-flex align-items-center mb-2">
+                                            <span class="badge bg-primary me-2">Google</span>
+                                            <label for="api-key-google-input" class="form-label mb-0 fw-semibold">Google AI API Key</label>
+                                        </div>
+                                        <input type="password" class="form-control" id="api-key-google-input"
+                                               placeholder="AIza..." aria-describedby="google-key-help">
+                                        <div id="google-key-help" class="form-text">
+                                            Required for Gemini models.
+                                            <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">Get key <i class="fas fa-external-link-alt fa-xs"></i></a>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-primary" id="save-api-key">
+                                        <i class="fas fa-save me-2"></i>Save Key(s)
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Main form -->
+                    <form id="book-form" class="card shadow-sm">
+                        <div class="card-header bg-primary text-white">
+                            <h3 class="card-title mb-0">
+                                <i class="fas fa-cog me-2"></i>Book Configuration
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <!-- Title & Description (moved to top) -->
+                            <div class="row mt-0">
+                                <div class="col-12">
+                                    <h5 class="border-bottom pb-2">
+                                        <i class="fas fa-heading me-2"></i>Title & Description
+                                    </h5>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="author-name" class="form-label">
+                                            <i class="fas fa-signature me-2"></i>Author Name
+                                        </label>
+                                        <input type="text" id="author-name" class="form-control" placeholder="e.g., Jane Doe">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="book-title" class="form-label">
+                                            <i class="fas fa-quote-left me-2"></i>Title
+                                        </label>
+                                        <input type="text" id="book-title" class="form-control" placeholder="Enter book title">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="book-subtitle" class="form-label">
+                                            <i class="fas fa-quote-right me-2"></i>Subtitle
+                                        </label>
+                                        <input type="text" id="book-subtitle" class="form-control" placeholder="Enter book subtitle (optional)">
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="mb-3">
+                                        <label for="short-description" class="form-label">
+                                            <i class="fas fa-align-left me-2"></i>Short Description
+                                        </label>
+                                        <textarea id="short-description" class="form-control" rows="3" placeholder="Write a concise description of the book concept..."></textarea>
+                                        <div class="form-text">We'll use this to generate multiple title/subtitle and medium-length description suggestions.</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <button type="button" id="generate-titles-btn" class="btn btn-outline-secondary w-100">
+                                        <i class="fas fa-wand-magic-sparkles me-2"></i>Generate Suggestions
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="row mt-3 d-none" id="title-suggestions-section">
+                                <div class="col-12">
+                                    <div class="card border-secondary">
+                                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                            <span><i class="fas fa-list-ul me-2"></i>Suggestions</span>
+                                            <button type="button" id="apply-title-selection-btn" class="btn btn-sm btn-primary">
+                                                <i class="fas fa-check me-1"></i>Apply Selected
+                                            </button>
+                                        </div>
+                                        <div class="card-body">
+                                            <div id="title-suggestions" class="row g-3"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row mt-4">
+                                <!-- Left column -->
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="book-length" class="form-label">
+                                            <i class="fas fa-ruler me-2"></i>Book Length
+                                        </label>
+                                        <select id="book-length" class="form-select" required>
+                                            <option value="">Select length...</option>
+                                            <option value="short">Short (5,000-10,000 words)</option>
+                                            <option value="medium">Medium (15,000-25,000 words)</option>
+                                            <option value="long">Long (50,000+ words)</option>
+                                            <option value="custom">Custom length</option>
+                                        </select>
+                                        <input type="number" id="custom-length" class="form-control mt-2 d-none" 
+                                               placeholder="Enter word count" min="1000" max="200000">
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="gpt-model" class="form-label">
+                                            <i class="fas fa-robot me-2"></i>AI Model
+                                        </label>
+                                        <select id="gpt-model" class="form-select" required>
+                                            <optgroup label="✦ OpenAI">
+                                                <option value="gpt-4o-mini" selected>GPT-4o mini — Fast &amp; economical</option>
+                                                <option value="gpt-4o">GPT-4o — High quality</option>
+                                                <option value="o4-mini">o4-mini — Reasoning</option>
+                                                <option value="gpt-5-mini">GPT-5 mini — New</option>
+                                                <option value="gpt-5">GPT-5 — New</option>
+                                                <option value="gpt-5-pro">GPT-5 Pro — Responses API</option>
+                                                <option value="gpt-4-turbo">GPT-4 Turbo — Legacy</option>
+                                                <option value="gpt-3.5-turbo">GPT-3.5 Turbo — Legacy</option>
+                                            </optgroup>
+                                            <optgroup label="✦ Anthropic Claude">
+                                                <option value="claude-opus-4-5">Claude Opus 4.5 — Most capable</option>
+                                                <option value="claude-sonnet-4-5">Claude Sonnet 4.5 — Balanced</option>
+                                                <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet — Strong</option>
+                                                <option value="claude-3-5-haiku-20241022">Claude 3.5 Haiku — Fast</option>
+                                                <option value="claude-3-opus-20240229">Claude 3 Opus — Legacy</option>
+                                                <option value="claude-3-haiku-20240307">Claude 3 Haiku — Legacy fast</option>
+                                            </optgroup>
+                                            <optgroup label="✦ Google Gemini">
+                                                <option value="gemini-2.5-pro">Gemini 2.5 Pro — Most capable</option>
+                                                <option value="gemini-2.0-flash">Gemini 2.0 Flash — Fast</option>
+                                                <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                                                <option value="gemini-1.5-flash">Gemini 1.5 Flash — Fast</option>
+                                            </optgroup>
+                                        </select>
+                                        <div class="form-text">
+                                            <i class="fas fa-info-circle me-1"></i>
+                                            Claude &amp; Gemini require their API keys — set them in
+                                            <a href="javascript:void(0)" id="open-api-key-modal-link">API Key settings</a>.
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="mode-preset" class="form-label">
+                                            <i class="fas fa-sliders-h me-2"></i>Mode Preset
+                                        </label>
+                                        <select id="mode-preset" class="form-select">
+                                            <option value="balanced" selected>Balanced (default)</option>
+                                            <option value="fast">Fast draft</option>
+                                            <option value="research">Research/deep dive</option>
+                                            <option value="kids">Kid-friendly</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="gpt-role" class="form-label">
+                                            <i class="fas fa-user-tie me-2"></i>Author Persona
+                                        </label>
+                                        <input type="text" id="gpt-role" class="form-control" 
+                                               placeholder="e.g., Professional Technical Writer or Investigative Journalist" 
+                                               required list="author-suggestions">
+                                        <datalist id="author-suggestions">
+                                            <option value="Stephen King - Horror/Thriller Writer">
+                                            <option value="Isaac Asimov - Science Fiction Writer">
+                                            <option value="Neil deGrasse Tyson - Science Communicator">
+                                            <option value="Malcolm Gladwell - Popular Science Writer">
+                                            <option value="J.K. Rowling - Fantasy Writer">
+                                            <option value="Professional Technical Writer">
+                                            <option value="Academic Researcher">
+                                            <option value="Investigative Journalist">
+                                        </datalist>
+                                    </div>
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label for="creativity" class="form-label d-flex justify-content-between align-items-center">
+                                                <span><i class="fas fa-wand-magic-sparkles me-2"></i>Creativity</span>
+                                                <span id="creativity-value" class="badge bg-light text-dark">0.70</span>
+                                            </label>
+                                            <input type="range" class="form-range" id="creativity" min="0" max="1" step="0.05" value="0.7">
+                                            <small class="text-muted">Controls temperature used for concepts, outlines, and chapters.</small>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="chapter-count" class="form-label d-flex justify-content-between align-items-center">
+                                                <span><i class="fas fa-list-ol me-2"></i>Target Chapters</span>
+                                                <span id="chapter-count-value" class="badge bg-light text-dark">10</span>
+                                            </label>
+                                            <input type="range" class="form-range" id="chapter-count" min="3" max="20" step="1" value="10">
+                                            <small class="text-muted">Guides outline generation on how many chapters to propose.</small>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Right column -->
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="workflow-mode" class="form-label">
+                                            <i class="fas fa-route me-2"></i>Workflow Mode
+                                        </label>
+                                        <select id="workflow-mode" class="form-select">
+                                            <option value="balanced" selected>Balanced (standard flow)</option>
+                                            <option value="guided">Guided (step-by-step)</option>
+                                            <option value="advanced">Advanced (all controls unlocked)</option>
+                                        </select>
+                                        <div class="form-text">Guided mode labels steps; advanced leaves everything open.</div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="genre" class="form-label">
+                                            <i class="fas fa-tags me-2"></i>Genre
+                                        </label>
+                                        <select id="genre" class="form-select" required>
+                                            <option value="">Select genre...</option>
+                                            <optgroup label="Fiction">
+                                                <option value="Science Fiction">Science Fiction</option>
+                                                <option value="Fantasy">Fantasy</option>
+                                                <option value="Mystery">Mystery</option>
+                                                <option value="Thriller">Thriller</option>
+                                                <option value="Romance">Romance</option>
+                                                <option value="Historical Fiction">Historical Fiction</option>
+                                            </optgroup>
+                                            <optgroup label="Non-Fiction">
+                                                <option value="Self-Help">Self-Help</option>
+                                                <option value="Biography">Biography</option>
+                                                <option value="Science">Science</option>
+                                                <option value="Technology">Technology</option>
+                                                <option value="Business">Business</option>
+                                                <option value="Philosophy">Philosophy</option>
+                                                <option value="History">History</option>
+                                            </optgroup>
+                                            <option value="custom">Custom Genre</option>
+                                        </select>
+                                        <input type="text" id="custom-genre" class="form-control mt-2 d-none" 
+                                               placeholder="Enter custom genre">
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="keywords" class="form-label">
+                                            <i class="fas fa-hashtag me-2"></i>Keywords/Topics
+                                        </label>
+                                        <input type="text" id="keywords" class="form-control" 
+                                               placeholder="e.g., AI, machine learning, future technology" required>
+                                        <div class="form-text">Separate multiple keywords with commas</div>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="target-audience" class="form-label">
+                                            <i class="fas fa-users me-2"></i>Target Audience
+                                        </label>
+                                        <select id="target-audience" class="form-select">
+                                            <option value="general">General Audience</option>
+                                            <option value="young-adult">Young Adult</option>
+                                            <option value="academic">Academic</option>
+                                            <option value="professional">Professional</option>
+                                            <option value="children">Children</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="language" class="form-label">
+                                            <i class="fas fa-language me-2"></i>Language
+                                        </label>
+                                        <select id="language" class="form-select">
+                                            <option value="en">English</option>
+                                            <option value="de">Deutsch</option>
+                                            <option value="es">Español</option>
+                                            <option value="fr">Français</option>
+                                            <option value="it">Italiano</option>
+                                            <option value="pt">Português</option>
+                                            <option value="zh">中文 (简体)</option>
+                                            <option value="ja">日本語</option>
+                                            <option value="ru">Русский</option>
+                                        </select>
+                                        <div class="form-text">Select the language to generate the book in.</div>
+                                    </div>
+                                </div>
+                            </div>
+
+
+                            <!-- Advanced options -->
+                            <div class="row mt-4">
+                                <div class="col-12">
+                                    <h5 class="border-bottom pb-2">
+                                        <i class="fas fa-sliders-h me-2"></i>Generation Options
+                                    </h5>
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="auto-gen" checked>
+                                                <label class="form-check-label" for="auto-gen">
+                                                    Auto-generate all chapters
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="include-images">
+                                                <label class="form-check-label" for="include-images">
+                                                    Generate image descriptions
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="detailed-chapters">
+                                                <label class="form-check-label" for="detailed-chapters">
+                                                    Generate detailed chapters
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row mt-3 g-3">
+                                        <div class="col-md-6">
+                                            <label for="example-template" class="form-label">
+                                                <i class="fas fa-lightbulb me-2"></i>Example Templates
+                                            </label>
+                                            <select id="example-template" class="form-select">
+                                                <option value="">Select an example...</option>
+                                                <option value="sci-fi">Sci‑Fi Adventure (teen)</option>
+                                                <option value="self-help">Self-Help Productivity</option>
+                                                <option value="kids">Kids Bedtime Stories</option>
+                                            </select>
+                                            <div class="form-text">Prefills title, audience, keywords, and description.</div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="alert alert-secondary py-2 mb-0 small" id="workflow-hint" role="alert">
+                                                Guided mode: follow buttons left to right. Advanced: freeform.
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action buttons -->
+                        <div class="card-footer">
+                            <div class="row g-2">
+                                <div class="col-12 col-md-7">
+                                    <div class="btn-group w-100" role="group">
+                                        <button type="button" id="concept-btn" class="btn btn-outline-primary">
+                                            <i class="fas fa-lightbulb me-2"></i>Generate Concept
+                                        </button>
+                                        <button type="button" id="content-btn" class="btn btn-outline-primary" disabled>
+                                            <i class="fas fa-list me-2"></i>Create Outline
+                                        </button>
+                                        <button type="button" id="chapters-btn" class="btn btn-outline-primary" disabled>
+                                            <i class="fas fa-book me-2"></i>Write Chapters
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <button type="button" id="agent-btn" class="btn btn-primary w-100" title="One-click: generate the complete book automatically">
+                                        <i class="fas fa-robot me-2"></i>Generate Complete Book
+                                    </button>
+                                </div>
+                                <div class="col-6 col-md-2">
+                                    <button type="button" id="reset-btn" class="btn btn-outline-secondary w-100">
+                                        <i class="fas fa-undo me-2"></i>Reset All
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+
+                    <!-- Content sections -->
+                    <div class="mt-4">
+
+                        <!-- Agent Mode Panel -->
+                        <div id="agent-panel" class="card shadow-sm mb-4 d-none agent-panel">
+                            <div class="card-header text-white d-flex align-items-center justify-content-between" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                                <h4 class="card-title mb-0">
+                                    <i class="fas fa-robot me-2"></i>Agent Mode — Generating Complete Book
+                                </h4>
+                                <button type="button" id="cancel-agent-btn" class="btn btn-sm btn-light d-none">
+                                    <i class="fas fa-stop me-1"></i>Cancel
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                <div id="agent-log" class="agent-log mb-3"></div>
+                                <div class="progress" style="height: 20px;">
+                                    <div id="agent-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-success"
+                                         role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Book concept section -->
+                        <div id="concept-section" class="card shadow-sm mb-4 d-none">
+                            <div class="card-header bg-info text-white">
+                                <h4 class="card-title mb-0">
+                                    <i class="fas fa-lightbulb me-2"></i>Book Concept
+                                </h4>
+                            </div>
+                            <div class="card-body">
+                                <!-- Structured view -->
+                                <div id="concept-structured">
+                                    <div class="row">
+                                        <div class="col-12 mb-2">
+                                            <h5 class="mb-0" id="concept-title">Untitled Book</h5>
+                                            <div class="text-muted" id="concept-subtitle"></div>
+                                        </div>
+                                        <div class="col-12 mb-3">
+                                            <span class="badge bg-secondary me-2" id="concept-audience">General Audience</span>
+                                            <span class="badge bg-secondary" id="concept-tone">Tone/Style</span>
+                                        </div>
+                                        <div class="col-12">
+                                            <h6>Logline</h6>
+                                            <p id="concept-logline" class="mb-3"></p>
+                                        </div>
+                                        <div class="col-12">
+                                            <h6>Premise</h6>
+                                            <div id="concept-premise" class="mb-3"></div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h6>Themes</h6>
+                                            <ul id="concept-themes" class="mb-3"></ul>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h6>Unique Selling Points</h6>
+                                            <ul id="concept-usps" class="mb-3"></ul>
+                                        </div>
+                                        <div class="col-12">
+                                            <h6>Reader Hooks</h6>
+                                            <ul id="concept-hooks" class="mb-0"></ul>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- JSON editor -->
+                                <div id="concept-json-editor" class="d-none mt-3">
+                                    <label for="concept-json" class="form-label">Concept JSON</label>
+                                    <textarea id="concept-json" class="form-control" rows="14" spellcheck="false"></textarea>
+                                </div>
+                                <!-- Legacy textarea (hidden) kept for backward compatibility with event listeners -->
+                                <textarea id="concept" class="form-control d-none" rows="8" readonly></textarea>
+                                <div class="mt-3 d-flex gap-2">
+                                    <button type="button" id="edit-concept-json-btn" class="btn btn-sm btn-outline-secondary">
+                                        <i class="fas fa-code me-2"></i>Edit JSON
+                                    </button>
+                                    <button type="button" id="save-concept-json-btn" class="btn btn-sm btn-success d-none">
+                                        <i class="fas fa-save me-2"></i>Save JSON
+                                    </button>
+                                    <button type="button" id="cancel-concept-json-btn" class="btn btn-sm btn-outline-secondary d-none">
+                                        <i class="fas fa-times me-2"></i>Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Table of contents section -->
+                        <div id="toc-section" class="card shadow-sm mb-4 d-none">
+                            <div class="card-header bg-success text-white">
+                                <h4 class="card-title mb-0">
+                                    <i class="fas fa-list me-2"></i>Table of Contents
+                                </h4>
+                            </div>
+                            <div class="card-body">
+                                <textarea id="contents" class="form-control" rows="10" readonly></textarea>
+                                <!-- JSON editor for structured outline -->
+                                <div id="contents-json-editor" class="d-none mt-3">
+                                    <label for="contents-json" class="form-label">Outline JSON</label>
+                                    <textarea id="contents-json" class="form-control" rows="12" spellcheck="false"></textarea>
+                                </div>
+                                <div class="mt-3 d-flex gap-2">
+                                    <button type="button" id="edit-toc-btn" class="btn btn-sm btn-outline-secondary">
+                                        <i class="fas fa-edit me-2"></i>Edit Outline
+                                    </button>
+                                    <button type="button" id="save-toc-btn" class="btn btn-sm btn-success d-none">
+                                        <i class="fas fa-save me-2"></i>Save Changes
+                                    </button>
+                                    <button type="button" id="edit-toc-json-btn" class="btn btn-sm btn-outline-secondary">
+                                        <i class="fas fa-code me-2"></i>Edit JSON
+                                    </button>
+                                    <button type="button" id="save-toc-json-btn" class="btn btn-sm btn-success d-none">
+                                        <i class="fas fa-save me-2"></i>Save JSON
+                                    </button>
+                                    <button type="button" id="cancel-toc-json-btn" class="btn btn-sm btn-outline-secondary d-none">
+                                        <i class="fas fa-times me-2"></i>Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Chapters section -->
+                        <div id="chapters-section" class="card shadow-sm mb-4 d-none">
+                            <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+                                <h4 class="card-title mb-0">
+                                    <i class="fas fa-book-open me-2"></i>Chapters
+                                </h4>
+                                <div class="chapter-progress">
+                                    <span id="chapter-counter" class="badge bg-dark">0 chapters</span>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div id="live-writer" class="mb-3"></div>
+                                <div id="chapters" class="chapters-container"></div>
+                                
+                                <!-- Chapter navigation -->
+                                <div id="chapter-nav" class="mt-4 d-none">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <button type="button" id="prev-chapter-btn" class="btn btn-outline-primary" disabled>
+                                                <i class="fas fa-chevron-left me-2"></i>Previous Chapter
+                                            </button>
+                                        </div>
+                                        <div class="col-md-6 text-end">
+                                            <button type="button" id="next-chapter-btn" class="btn btn-outline-primary">
+                                                Next Chapter <i class="fas fa-chevron-right ms-2"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Images & Cover section -->
+                        <div id="images-section" class="card shadow-sm mb-4 d-none">
+                            <div class="card-header bg-secondary text-white">
+                                <h4 class="card-title mb-0">
+                                    <i class="fas fa-image me-2"></i>Cover Image
+                                </h4>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-3 align-items-end">
+                                    <div class="col-md-8">
+                                        <label for="cover-prompt" class="form-label"><i class="fas fa-pen me-2"></i>Cover Prompt</label>
+                                        <input id="cover-prompt" class="form-control" placeholder="e.g., Minimalist sci‑fi cover with neon cityscape, moody atmosphere">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label for="cover-size" class="form-label"><i class="fas fa-expand me-2"></i>Size</label>
+                                        <select id="cover-size" class="form-select">
+                                            <option value="1024x1536">1024×1536 (portrait)</option>
+                                            <option value="1024x1024">1024×1024 (square)</option>
+                                            <option value="1536x1024">1536×1024 (landscape)</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <button type="button" id="generate-cover-btn" class="btn btn-outline-primary w-100">
+                                            <i class="fas fa-magic me-2"></i>Generate
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="mt-3 text-center">
+                                    <img id="cover-image" class="img-fluid rounded shadow d-none" alt="Generated cover preview">
+                                </div>
+                                <div class="mt-3 d-flex gap-2">
+                                    <button type="button" id="download-cover-btn" class="btn btn-outline-success d-none">
+                                        <i class="fas fa-download me-2"></i>Download Cover
+                                    </button>
+                                    <button type="button" id="use-cover-in-pdf-btn" class="btn btn-outline-secondary d-none">
+                                        <i class="fas fa-plus me-2"></i>Include in PDF
+                                    </button>
+                                </div>
+                                <small class="text-muted d-block mt-2"><i class="fas fa-info-circle me-1"></i>Uses OpenAI Images API (gpt-image-1). Your prompt never leaves your browser except to OpenAI.</small>
+                            </div>
+                        </div>
+
+                        <!-- Export section -->
+                        <div id="export-section" class="card shadow-sm mb-4 d-none">
+                            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                                <h4 class="card-title mb-0">
+                                    <i class="fas fa-download me-2"></i>Export Options
+                                </h4>
+                                <span class="badge bg-secondary" id="stats-badge" title="Estimated reading time and word count">–</span>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-2">
+                                    <div class="col-sm-6 col-md-3">
+                                        <button type="button" id="export-txt-btn" class="btn btn-outline-primary w-100 mb-2">
+                                            <i class="fas fa-file-alt me-2"></i>Export as TXT
+                                        </button>
+                                    </div>
+                                    <div class="col-sm-6 col-md-3">
+                                        <button type="button" id="export-html-btn" class="btn btn-outline-success w-100 mb-2">
+                                            <i class="fas fa-code me-2"></i>Export as HTML
+                                        </button>
+                                    </div>
+                                    <div class="col-sm-6 col-md-3">
+                                        <button type="button" id="export-md-btn" class="btn btn-outline-info w-100 mb-2">
+                                            <i class="fab fa-markdown me-2"></i>Export as Markdown
+                                        </button>
+                                    </div>
+                                    <div class="col-sm-6 col-md-3">
+                                        <button type="button" id="export-json-btn" class="btn btn-outline-secondary w-100 mb-2">
+                                            <i class="fas fa-file-code me-2"></i>Export as JSON
+                                        </button>
+                                    </div>
+                                    <div class="col-sm-6 col-md-3">
+                                        <button type="button" id="export-pdf-btn" class="btn btn-outline-danger w-100 mb-2">
+                                            <i class="fas fa-file-pdf me-2"></i>Export as PDF
+                                        </button>
+                                    </div>
+                                    <div class="col-sm-6 col-md-3">
+                                        <button type="button" id="export-copy-btn" class="btn btn-outline-dark w-100 mb-2">
+                                            <i class="fas fa-copy me-2"></i>Copy to Clipboard
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="mt-3">
+                                    <small class="text-muted">
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        PDF export uses html2pdf.js if available, otherwise your browser's Print to PDF.
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bootstrap JS -->
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+        <!-- html2pdf (for PDF export) -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+        <!-- Custom scripts -->
+        <script type="module" src="js/config.js"></script>
+        <script type="module" src="js/api.js"></script>
+        <script type="module" src="js/ui.js"></script>
+        <script type="module" src="js/storage.js"></script>
+        <script type="module" src="js/export.js"></script>
+        <script type="module" src="js/app.js"></script>
+    </body>
+</html>
